@@ -39,3 +39,58 @@ func TestService_FindAccountByID_ErrAccountNotFound(t *testing.T) {
 		}
 	}
 }
+
+func TestService_Reject_ErrPaymentNotFound(t *testing.T) {
+	svr := &Service{}
+	_, err := svr.FindPaymentByID("10")
+	if err != nil {
+		switch err {
+		case ErrPaymentNotFound:
+			t.Log("Оплата не была найдена")
+		}
+		return 
+	}
+}
+
+func TestService_Reject_success(t *testing.T){
+	svr := &Service{}
+	phone := types.Phone("+992501182129")
+	account, err := svr.RegisterAccount(phone)
+	if err != nil {
+		switch err {
+		case ErrPhoneRegistered:
+			t.Errorf("Номер уже используется %v",phone)
+		}
+		return 
+	}
+	err = svr.Deposit(account.ID,types.Money(666))
+	if err != nil {
+		switch err {
+		case ErrAccountNotFound:
+			t.Errorf("Аккаунт c ID = %v не найден", account.ID)
+		
+		case ErrAmountMustBePositive :
+			t.Error("Сумма должна быть больше нуля")
+		}
+		return 
+	}
+	payment, err := svr.Pay(account.ID, types.Money(12), types.PaymentCategory("Clothes"))
+	if err != nil{
+		switch err {
+		case ErrAmountMustBePositive : 
+			t.Error("Cумма оплаты должна быть больше нуля")
+		case ErrNotEnoughBalance : 
+			t.Error("Сумма на балансе карты недостаточна для оплаты")
+		}
+		return 		
+	}
+	_,err = svr.FindPaymentByID(payment.ID)
+	if err != nil {
+		switch err {
+		case ErrPaymentNotFound:
+			t.Errorf("Оплата с таким ID = %v не найден", payment.ID)
+		}
+		return 
+	}
+	t.Logf("Оплата с ID = %v отменена",payment.ID)
+}

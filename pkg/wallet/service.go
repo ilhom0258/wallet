@@ -98,6 +98,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		Category:  category,
 		Status:    types.PaymnetStatusInProgress,
 	}
+	s.payments = append(s.payments, payment)
 	return payment, nil
 }
 
@@ -130,4 +131,29 @@ func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 	}
 
 	return payment, nil
+}
+
+//Reject cancels payment which ProgressStatus
+//930777607
+func (s *Service) Reject(paymentID string) error {
+	var payment *types.Payment
+	for _, pmnt := range s.payments {
+		if pmnt.ID == paymentID && pmnt.Status == types.PaymnetStatusInProgress {
+			payment = pmnt
+			break
+		}
+	}
+	if payment == nil {
+		return ErrPaymentNotFound
+	}
+	payment.Status = types.PaymentStatusFail
+	var account *types.Account
+	for _, acc := range s.accounts {
+		if acc.ID == payment.AccountID {
+			account = acc
+			break
+		}
+	}
+	account.Balance += payment.Amount
+	return nil
 }
