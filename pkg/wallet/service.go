@@ -98,6 +98,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		Category:  category,
 		Status:    types.PaymentStatusInProgress,
 	}
+	account.Balance -= amount 
 	s.payments = append(s.payments, payment)
 	return payment, nil
 }
