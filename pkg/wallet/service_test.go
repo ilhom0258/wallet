@@ -92,5 +92,12 @@ func TestService_Reject_success(t *testing.T){
 		}
 		return 
 	}
+	err = svr.Reject(payment.ID)
+	if err != nil {
+		switch err {
+		case ErrPaymentNotFound:
+			t.Error("Аккаунт не найден")
+		}
+	}
 	t.Logf("Оплата с ID = %v отменена",payment.ID)
 }

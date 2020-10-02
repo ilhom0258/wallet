@@ -96,7 +96,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		AccountID: accountID,
 		Amount:    amount,
 		Category:  category,
-		Status:    types.PaymnetStatusInProgress,
+		Status:    types.PaymentStatusInProgress,
 	}
 	s.payments = append(s.payments, payment)
 	return payment, nil
@@ -121,7 +121,7 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 	var payment *types.Payment
 	for _, pmnt := range s.payments {
-		if paymentID == pmnt.ID {
+		if paymentID == pmnt.ID && pmnt.Status == types.PaymentStatusInProgress {
 			payment = pmnt
 			break
 		}
@@ -138,7 +138,7 @@ func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 func (s *Service) Reject(paymentID string) error {
 	var payment *types.Payment
 	for _, pmnt := range s.payments {
-		if pmnt.ID == paymentID && pmnt.Status == types.PaymnetStatusInProgress {
+		if pmnt.ID == paymentID {
 			payment = pmnt
 			break
 		}
