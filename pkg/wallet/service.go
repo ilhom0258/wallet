@@ -185,14 +185,31 @@ func newTestService() *testService {
 	return &testService{Service: &Service{}}
 }
 
-func (s *testService) addAccountWithBalance(phone types.Phone, balance types.Money) (*types.Account, error) {
-	account, err := s.RegisterAccount(phone)
-	if err != nil {
-		return nil, fmt.Errorf("can't register account, error = %v", err)
+type testAccount struct {
+	phone    types.Phone
+	balance  types.Money
+	payments []struct {
+		amount   types.Money
+		category types.PaymentCategory
 	}
-	err = s.Deposit(account.ID, balance)
+}
+
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
+	account, err := s.RegisterAccount(data.phone)
 	if err != nil {
-		return nil, fmt.Errorf("can't register account, error = %v", err)
+		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
 	}
-	return account, nil
+
+	err = s.Deposit(account.ID, data.balance)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
+	}
+	payments := make([]*types.Payment, len(data.payments))
+	for i, payment := range data.payments {
+		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't make paymnet, index = %v, error = %v", i, err)
+		}
+	}
+	return account, payments, nil
 }
