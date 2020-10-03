@@ -194,6 +194,19 @@ type testAccount struct {
 	}
 }
 
+var defaultTestAccount = testAccount{
+	phone:   "+992501182129",
+	balance: 10_000_00,
+	payments: []struct {
+		amount   types.Money
+		category types.PaymentCategory
+	}{
+		{amount: 1_000_00, category: "tech"},
+		{amount: 1_000_00, category: "book"},
+		{amount: 1_000_00, category: "auto"},
+	},
+}
+
 func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
 	account, err := s.RegisterAccount(data.phone)
 	if err != nil {

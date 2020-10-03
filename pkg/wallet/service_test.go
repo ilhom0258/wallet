@@ -6,18 +6,7 @@ import (
 	"github.com/ilhom0258/wallet/pkg/types"
 )
 
-var defaultAccount = testAccount{
-	phone:   "+992501182129",
-	balance: 10_000_00,
-	payments: []struct {
-		amount   types.Money
-		category types.PaymentCategory
-	}{
-		{amount: 1_000_00, category: "tech"},
-		{amount: 1_000_00, category: "book"},
-		{amount: 1_000_00, category: "auto"},
-	},
-}
+
 
 func TestService_FindAccountByID_success(t *testing.T) {
 	svr := &Service{}
@@ -118,10 +107,10 @@ func TestService_Reject_success(t *testing.T) {
 
 func TestService_Repeat_success(t *testing.T) {
 	s := newTestService()
-	_, payments, err := s.addAccount(defaultAccount)
+	_, payments, err := s.addAccount(defaultTestAccount)
 
-	payment, err := s.Repeat(payments[0].ID,)
-	if err != nil{
+	payment, err := s.Repeat(payments[0].ID)
+	if err != nil {
 		t.Errorf("%v", err)
 	}
 	t.Logf("success payment = %v", payment)
