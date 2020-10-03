@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/ilhom0258/wallet/pkg/types"
@@ -172,57 +171,9 @@ func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
 	if payment == nil {
 		return nil, ErrPaymentNotFound
 	}
-	payment.ID = uuid.New().String()
-	payment.Status = types.PaymentStatusInProgress
+	payment, err := s.Pay(payment.AccountID, payment.Amount, payment.Category)
+	if err != nil {
+		return nil, err
+	}
 	return payment, nil
-}
-
-type testService struct {
-	*Service
-}
-
-func newTestService() *testService {
-	return &testService{Service: &Service{}}
-}
-
-type testAccount struct {
-	phone    types.Phone
-	balance  types.Money
-	payments []struct {
-		amount   types.Money
-		category types.PaymentCategory
-	}
-}
-
-var defaultTestAccount = testAccount{
-	phone:   "+992501182129",
-	balance: 10_000_00,
-	payments: []struct {
-		amount   types.Money
-		category types.PaymentCategory
-	}{
-		{amount: 1_000_00, category: "tech"},
-		{amount: 1_000_00, category: "book"},
-		{amount: 1_000_00, category: "auto"},
-	},
-}
-
-func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
-	account, err := s.RegisterAccount(data.phone)
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
-	}
-
-	err = s.Deposit(account.ID, data.balance)
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
-	}
-	payments := make([]*types.Payment, len(data.payments))
-	for i, payment := range data.payments {
-		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
-		if err != nil {
-			return nil, nil, fmt.Errorf("can't make paymnet, index = %v, error = %v", i, err)
-		}
-	}
-	return account, payments, nil
 }

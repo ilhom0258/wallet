@@ -1,12 +1,11 @@
 package wallet
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ilhom0258/wallet/pkg/types"
 )
-
-
 
 func TestService_FindAccountByID_success(t *testing.T) {
 	svr := &Service{}
@@ -114,4 +113,52 @@ func TestService_Repeat_success(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 	t.Logf("success payment = %v", payment)
+}
+
+type testService struct {
+	*Service
+}
+
+func newTestService() *testService {
+	return &testService{Service: &Service{}}
+}
+
+type testAccount struct {
+	phone    types.Phone
+	balance  types.Money
+	payments []struct {
+		amount   types.Money
+		category types.PaymentCategory
+	}
+}
+
+var defaultTestAccount = testAccount{
+	phone:   "+992000000001",
+	balance: 10_000_00,
+	payments: []struct {
+		amount   types.Money
+		category types.PaymentCategory
+	}{
+		{amount: 1_000_00, category: "auto"},
+	},
+}
+
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
+	account, err := s.RegisterAccount(data.phone)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
+	}
+
+	err = s.Deposit(account.ID, data.balance)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
+	}
+	payments := make([]*types.Payment, len(data.payments))
+	for i, payment := range data.payments {
+		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't make paymnet, index = %v, error = %v", i, err)
+		}
+	}
+	return account, payments, nil
 }
