@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/ilhom0258/wallet/pkg/types"
@@ -98,7 +99,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 		Category:  category,
 		Status:    types.PaymentStatusInProgress,
 	}
-	account.Balance -= amount 
+	account.Balance -= amount
 	s.payments = append(s.payments, payment)
 	return payment, nil
 }
@@ -157,4 +158,41 @@ func (s *Service) Reject(paymentID string) error {
 	}
 	account.Balance += payment.Amount
 	return nil
+}
+
+//Repeat function that repeats payment with different UUID
+func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
+	var payment *types.Payment
+	for _, pmnt := range s.payments {
+		if pmnt.ID == paymentID {
+			payment = pmnt
+			break
+		}
+	}
+	if payment == nil {
+		return nil, ErrPaymentNotFound
+	}
+	payment.ID = uuid.New().String()
+	payment.Status = types.PaymentStatusInProgress
+	return payment, nil
+}
+
+type testService struct {
+	*Service
+}
+
+func newTestService() *testService {
+	return &testService{Service: &Service{}}
+}
+
+func (s *testService) addAccountWithBalance(phone types.Phone, balance types.Money) (*types.Account, error) {
+	account, err := s.RegisterAccount(phone)
+	if err != nil {
+		return nil, fmt.Errorf("can't register account, error = %v", err)
+	}
+	err = s.Deposit(account.ID, balance)
+	if err != nil {
+		return nil, fmt.Errorf("can't register account, error = %v", err)
+	}
+	return account, nil
 }

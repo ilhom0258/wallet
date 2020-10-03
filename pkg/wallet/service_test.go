@@ -102,3 +102,22 @@ func TestService_Reject_success(t *testing.T) {
 	}
 	t.Logf("Оплата с ID = %v отменена", payment.ID)
 }
+
+func TestService_Repeat_success(t *testing.T) {
+	s := newTestService()
+	account, err := s.addAccountWithBalance("+992501182129", types.Money(1000))
+	if err != nil {
+		t.Errorf("%v", err)
+		return 
+	}
+	payment, err := s.Pay(account.ID, 1000, "book")
+	if err != nil {
+		t.Errorf("%v",err)
+		return 
+	}
+	payment, err = s.Repeat(payment.ID)
+	if err != nil {
+		t.Errorf("%v",err)
+		return
+	}
+}
