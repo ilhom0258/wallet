@@ -189,11 +189,14 @@ func (s *Service) FavoritePayment(paymentID string, name string) (*types.Favorit
 	if err != nil {
 		return nil, err
 	}
+	if payment == nil {
+		return nil, ErrPaymentNotFound
+	}
 	favorite := &types.Favorite{
-		ID:        paymentID,
-		Amount:    payment.Amount,
+		ID:        uuid.New().String(),
 		AccountID: payment.AccountID,
 		Name:      name,
+		Amount:    payment.Amount,
 		Category:  payment.Category,
 	}
 	s.favorites = append(s.favorites, favorite)

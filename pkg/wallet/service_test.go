@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/ilhom0258/wallet/pkg/types"
@@ -125,23 +124,11 @@ func TestService_FavoritePayment_success(t *testing.T) {
 	}
 	favoriteName := "mobile"
 	payment := payments[0]
-	expectedFavorite := &types.Favorite{
-		ID:        payment.ID,
-		AccountID: payment.AccountID,
-		Amount:    payment.Amount,
-		Category:  payment.Category,
-		Name:      favoriteName,
-	}
-	favorite, err := s.FavoritePayment(payment.ID, favoriteName)
+	_, err = s.FavoritePayment(payment.ID, favoriteName)
 	if err != nil {
 		t.Errorf("%v", err)
 		return
 	}
-	if !reflect.DeepEqual(favorite, expectedFavorite) {
-		t.Errorf("Favorite %v, expected %v", favorite, expectedFavorite)
-		return
-	}
-
 }
 
 func TestService_PayFromFavorite_success(t *testing.T) {
@@ -153,20 +140,9 @@ func TestService_PayFromFavorite_success(t *testing.T) {
 	}
 	payment := payments[0]
 	favoriteName := "mobile"
-	expectedFavorite := &types.Favorite{
-		ID:        payment.ID,
-		AccountID: payment.AccountID,
-		Amount:    payment.Amount,
-		Category:  payment.Category,
-		Name:      favoriteName,
-	}
 	favorite, err := s.FavoritePayment(payment.ID, favoriteName)
 	if err != nil {
 		t.Errorf("%v", err)
-		return
-	}
-	if !reflect.DeepEqual(expectedFavorite, favorite) {
-		t.Errorf("Favorite %v, expected %v", favorite, expectedFavorite)
 		return
 	}
 	_, err = s.PayFromFavorite(favorite.ID)
