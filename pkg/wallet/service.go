@@ -12,6 +12,7 @@ type Service struct {
 	nextAccountID int64
 	accounts      []*types.Account
 	payments      []*types.Payment
+	favorites     []*types.Favorite
 }
 
 //Error message
@@ -35,6 +36,9 @@ var ErrNotEnoughBalance = errors.New("not enough balance in account")
 
 //ErrPaymentNotFound Common Error
 var ErrPaymentNotFound = errors.New("paymnet not found")
+
+//ErrFavoriteNotFound Common Error
+var ErrFavoriteNotFound = errors.New("favorite not found")
 
 // RegisterAccount function for registering wallet account for user
 func (s *Service) RegisterAccount(phone types.Phone) (*types.Account, error) {
@@ -172,6 +176,43 @@ func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
 		return nil, ErrPaymentNotFound
 	}
 	payment, err := s.Pay(payment.AccountID, payment.Amount, payment.Category)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
+}
+
+//FavoritePayment function for creating favorite payment
+func (s *Service) FavoritePayment(paymentID string, name string) (*types.Favorite, error) {
+
+	payment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil, err
+	}
+	favorite := &types.Favorite{
+		ID:        paymentID,
+		Amount:    payment.Amount,
+		AccountID: payment.AccountID,
+		Name:      name,
+		Category:  payment.Category,
+	}
+	s.favorites = append(s.favorites, favorite)
+	return favorite, nil
+}
+
+//PayFromFavorite function for favorite payment for user
+func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
+	var favorite *types.Favorite
+	for _, fvrt := range s.favorites {
+		if fvrt.ID == favoriteID {
+			favorite = fvrt
+			break
+		}
+	}
+	if favorite == nil {
+		return nil, ErrFavoriteNotFound
+	}
+	payment, err := s.Pay(favorite.AccountID, favorite.Amount, favorite.Category)
 	if err != nil {
 		return nil, err
 	}
