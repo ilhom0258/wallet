@@ -152,6 +152,38 @@ func TestService_PayFromFavorite_success(t *testing.T) {
 	}
 }
 
+func TestService_Export_success(t *testing.T) {
+	s := newTestService()
+	_, err := s.RegisterAccount("+0000000001")
+	_, err = s.RegisterAccount("+0000000002")
+	_, err = s.RegisterAccount("+0000000003")
+	_, err = s.RegisterAccount("+0000000004")
+	_, err = s.RegisterAccount("+0000000005")
+	_, err = s.RegisterAccount("+0000000006")
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	favoriteName := "mobile"
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, favoriteName)
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	if err != nil {
+		t.Errorf("error %v", err)
+		return
+	}
+	s.Export("data")
+}
+
+func TestService_Import_success(t *testing.T) {
+	s := newTestService()
+	s.Import("data")
+}
+
 // =========== Helper methods
 type testService struct {
 	*Service
@@ -186,7 +218,6 @@ func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Pay
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
 	}
-
 	err = s.Deposit(account.ID, data.balance)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
