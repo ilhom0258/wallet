@@ -152,6 +152,30 @@ func TestService_PayFromFavorite_success(t *testing.T) {
 	}
 }
 
+func TestService_ExportToFile_success(t *testing.T) {
+	s := newTestService()
+	_, err := s.RegisterAccount("+0000000001")
+	_, err = s.RegisterAccount("+0000000002")
+	_, err = s.RegisterAccount("+0000000003")
+	_, err = s.RegisterAccount("+0000000004")
+	_, err = s.RegisterAccount("+0000000005")
+	_, err = s.RegisterAccount("+0000000006")
+	if err != nil {
+		t.Error("error in export")
+		return
+	}
+	s.ExportToFile("export.txt")
+}
+
+func TestService_ImportFromFile_success(t *testing.T) {
+	s := newTestService()
+	err := s.ImportFromFile("export.txt")
+	if err != nil {
+		t.Error("error in import'")
+		return
+	}
+}
+
 func TestService_Export_success(t *testing.T) {
 	s := newTestService()
 	_, err := s.RegisterAccount("+0000000001")
@@ -177,11 +201,23 @@ func TestService_Export_success(t *testing.T) {
 		return
 	}
 	s.Export("data")
+	s.Import("data")
 }
 
-func TestService_Import_success(t *testing.T) {
+func TestService_HistoryToFiles_sucess(t *testing.T) {
 	s := newTestService()
-	s.Import("data")
+	account, _, err := s.addAccount(defaultTestAccount)
+	if err != nil{
+		t.Error("error in account")
+		return 
+	}
+	accountID := int64(account.ID)
+	payments, err := s.ExportAccountHistory(accountID)
+	if err != nil {
+		t.Errorf("%v error in testHistory",err)
+		return 
+	}
+	s.HistoryToFile(payments, "data", 3)
 }
 
 // =========== Helper methods
@@ -204,11 +240,21 @@ type testAccount struct {
 
 var defaultTestAccount = testAccount{
 	phone:   "+992000000001",
-	balance: 10_000_00,
+	balance: 100000000_000_00,
 	payments: []struct {
 		amount   types.Money
 		category types.PaymentCategory
 	}{
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
+		{amount: 1_000_00, category: "auto"},
 		{amount: 1_000_00, category: "auto"},
 	},
 }

@@ -2,11 +2,13 @@ package wallet
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -238,7 +240,7 @@ func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
 	return payment, nil
 }
 
-//ExportToFile exports data to file
+// ExportToFile exports data to file
 func (s *Service) ExportToFile(path string) error {
 	file, err := os.Create(path)
 	if err != nil {
@@ -263,7 +265,7 @@ func (s *Service) ExportToFile(path string) error {
 	return nil
 }
 
-//ImportFromFile imports data from file
+// ImportFromFile imports data from file
 func (s *Service) ImportFromFile(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
@@ -318,30 +320,127 @@ func (s *Service) Export(dir string) (err error) {
 	payments := s.payments
 	favorites := s.favorites
 	if len(accounts) != 0 {
+		dir, err = pathMaker(dir, "payments.dump")
 		err = exportAccounts(accounts, dir)
 		if err != nil {
-			return ErrWorkingDirectoryNotFound
+			return err
 		}
 	}
 	if len(payments) != 0 {
+		dir, err = pathMaker(dir, "payments.dump")
 		err = exportPayments(payments, dir)
 		if err != nil {
-			return ErrWorkingDirectoryNotFound
+			return err
 		}
 	}
 	if len(favorites) != 0 {
+		dir, err = pathMaker(dir, "payments.dump")
 		err = exportFavorites(favorites, dir)
 		if err != nil {
-			return ErrWorkingDirectoryNotFound
+			return err
 		}
 	}
 	return nil
 }
-func exportAccounts(accounts []*types.Account, dir string) (err error) {
-	filePath, err := pathMaker(dir, "accounts.dump")
+
+//Import - import data from file
+func (s *Service) Import(dir string) (err error) {
+
+	path, err := filepath.Abs(dir)
+	fmt.Println(path)
 	if err != nil {
-		return ErrWorkingDirectoryNotFound
+		return err
 	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return err
+	}
+	accountPath := path + "/accounts.dump"
+	paymentPath := path + "/payments.dump"
+	favoritePath := path + "/favorites.dump"
+	if s.fileExist(accountPath) {
+		log.Printf("here acc %v", accountPath)
+		err = importAccounts(accountPath, s)
+	}
+	if s.fileExist(paymentPath) {
+		log.Printf("here pay %v", paymentPath)
+		err = importPayments(paymentPath, s)
+	}
+	if s.fileExist(favoritePath) {
+		log.Printf("here fav %v", favoritePath)
+		err = importFavorites(favoritePath, s)
+	}
+	return nil
+}
+
+//ExportAccountHistory takes an accountID and returns all payments
+func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
+
+	var payments []types.Payment
+	var account *types.Account
+
+	for _, acc := range s.accounts {
+		if accountID == acc.ID {
+			account = acc
+			break
+		}
+	}
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	for _, payment := range s.payments {
+		if accountID == payment.AccountID {
+			payments = append(payments, *payment)
+		}
+	}
+	return payments, nil
+}
+
+//HistoryToFile exports account history into files
+func (s *Service) HistoryToFile(payments []types.Payment, dir string, records int) error {
+
+	var pmnts []*types.Payment
+	for _, payment := range payments {
+		pmnts = append(pmnts, &payment)
+	}
+	if len(payments) <= records {
+		path, err := pathMaker(dir, "payments.dump")
+		if err != nil {
+			return err
+		}
+		err = exportPayments(pmnts, path)
+	}
+	if len(payments) > records {
+		paymentsToExport := []*types.Payment{}
+		paymentsCnt := 1 
+		for i, payment := range pmnts{
+			fileName := fmt.Sprintf("paymnets%v",paymentsCnt)
+			path, err := pathMaker(dir, fileName)
+			paymentsToExport = append(paymentsToExport,payment)
+			if (i+1) % records == 0 && i != 0{
+				err = exportPayments(paymentsToExport,path)
+				if err != nil{
+					return err
+				}
+				paymentsCnt ++
+				paymentsToExport = []*types.Payment{}
+			}
+			if i+1 == len(pmnts) && (i+1) % records != 0 {
+				err = exportPayments(paymentsToExport,path)
+				if err != nil{
+					return err
+				}
+			}
+			
+		} 
+	}
+	return nil
+}
+
+// Helpers
+
+func exportAccounts(accounts []*types.Account, dir string) (err error) {
 	data := ""
 	for _, account := range accounts {
 		id := strconv.FormatInt(int64(account.ID), 10)
@@ -349,7 +448,7 @@ func exportAccounts(accounts []*types.Account, dir string) (err error) {
 		phone := string(account.Phone)
 		data += id + ";" + phone + ";" + balance + "\n"
 	}
-	err = ioutil.WriteFile(filePath, []byte(data), 0666)
+	err = ioutil.WriteFile(dir, []byte(data), 0700)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -358,10 +457,6 @@ func exportAccounts(accounts []*types.Account, dir string) (err error) {
 }
 
 func exportPayments(payments []*types.Payment, dir string) (err error) {
-	filePath, err := pathMaker(dir, "payments.dump")
-	if err != nil {
-		return ErrWorkingDirectoryNotFound
-	}
 	data := ""
 	for _, payment := range payments {
 		id := string(payment.ID)
@@ -371,7 +466,7 @@ func exportPayments(payments []*types.Payment, dir string) (err error) {
 		stat := string(payment.Status)
 		data += id + ";" + accID + ";" + amount + ";" + cat + ";" + stat + "\n"
 	}
-	err = ioutil.WriteFile(filePath, []byte(data), 0666)
+	err = ioutil.WriteFile(dir, []byte(data), 0700)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -380,10 +475,6 @@ func exportPayments(payments []*types.Payment, dir string) (err error) {
 }
 
 func exportFavorites(favorites []*types.Favorite, dir string) (err error) {
-	filePath, err := pathMaker(dir, "favorites.dump")
-	if err != nil {
-		return ErrWorkingDirectoryNotFound
-	}
 	data := ""
 	for _, favorite := range favorites {
 		id := string(favorite.ID)
@@ -393,7 +484,7 @@ func exportFavorites(favorites []*types.Favorite, dir string) (err error) {
 		name := string(favorite.Name)
 		data += id + ";" + accID + ";" + name + ";" + amount + ";" + cat + "\n"
 	}
-	err = ioutil.WriteFile(filePath, []byte(data), 0666)
+	err = ioutil.WriteFile(dir, []byte(data), 0700)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -401,45 +492,8 @@ func exportFavorites(favorites []*types.Favorite, dir string) (err error) {
 	return nil
 }
 
-//Import - import data from file
-func (s *Service) Import(dir string) (err error) {
-
-	path, err := filepath.Abs(dir)
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return err
-	}
-	accountPath := path + "/accounts.dump"
-	paymentPath := path + "/payments.dump"
-	favoritePath := path + "/favorites.dump"
-	if _, err = os.Stat(accountPath); os.IsExist(err) {
-		return ErrWorkingDirectoryNotFound
-	}
-	if _, err = os.Stat(paymentPath); os.IsExist(err) {
-		return ErrWorkingDirectoryNotFound
-	}
-	if _, err = os.Stat(favoritePath); os.IsExist(err) {
-		return ErrWorkingDirectoryNotFound
-	}
-	err = importAccounts(accountPath, s)
-	if err != nil{
-		return err
-	}
-	err = importPayments(paymentPath, s)
-	if err != nil{
-		return err
-	}
-	err = importFavorites(favoritePath, s)
-	if err != nil{
-		return err
-	}
-	return nil
-}
-
 func importAccounts(path string, s *Service) error {
-	dataRaw, err := ioutil.ReadFile(path)
+	dataRaw, err := s.getDataFromFile(path)
 	if err != nil {
 		return ErrWorkingDirectoryNotFound
 	}
@@ -448,7 +502,7 @@ func importAccounts(path string, s *Service) error {
 	for _, account := range accounts {
 		if !isAccountInService(account, s) {
 			s.accounts = append(s.accounts, account)
-			if account.ID > s.nextAccountID {
+			if account.ID >= s.nextAccountID {
 				s.nextAccountID = account.ID + 1
 			}
 		}
@@ -457,7 +511,7 @@ func importAccounts(path string, s *Service) error {
 }
 
 func importPayments(path string, s *Service) error {
-	dataRaw, err := ioutil.ReadFile(path)
+	dataRaw, err := s.getDataFromFile(path)
 	if err != nil {
 		return ErrWorkingDirectoryNotFound
 	}
@@ -471,24 +525,24 @@ func importPayments(path string, s *Service) error {
 	return nil
 }
 
-func importFavorites(path string, s *Service) error{
-	dataRaw, err := ioutil.ReadFile(path)
-	if err != nil{
+func importFavorites(path string, s *Service) error {
+	dataRaw, err := s.getDataFromFile(path)
+	if err != nil {
 		return ErrWorkingDirectoryNotFound
 	}
 	data := string(dataRaw)
 	favorites, err := parseFavorites(data)
-	for _, favorite := range favorites{
-		if !isFavoriteInService(favorite,s){
-			s.favorites = append(s.favorites,favorite)
+	for _, favorite := range favorites {
+		if !isFavoriteInService(favorite, s) {
+			s.favorites = append(s.favorites, favorite)
 		}
-	} 
+	}
 	return nil
 }
 
 func isAccountInService(info *types.Account, s *Service) bool {
 	for _, account := range s.accounts {
-		if account == info {
+		if reflect.DeepEqual(account, info) {
 			return true
 		}
 	}
@@ -497,7 +551,7 @@ func isAccountInService(info *types.Account, s *Service) bool {
 
 func isPaymentInService(info *types.Payment, s *Service) bool {
 	for _, payment := range s.payments {
-		if payment == info {
+		if reflect.DeepEqual(payment, info) {
 			return true
 		}
 	}
@@ -505,8 +559,8 @@ func isPaymentInService(info *types.Payment, s *Service) bool {
 }
 
 func isFavoriteInService(info *types.Favorite, s *Service) bool {
-	for _, favorite := range s.favorites{
-		if favorite == info{
+	for _, favorite := range s.favorites {
+		if reflect.DeepEqual(favorite, info) {
 			return true
 		}
 	}
@@ -613,4 +667,47 @@ func pathMaker(dir string, fileName string) (string, error) {
 		os.MkdirAll(path, 700)
 	}
 	return path + "/" + fileName, nil
+}
+
+func (s *Service) fileExist(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return !info.IsDir()
+}
+
+func (s *Service) getDataFromFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Println(err)
+		return "", err
+	}
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	content := make([]byte, 0)
+	buf := make([]byte, 4096)
+
+	for {
+		read, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Println(err)
+			return "", err
+		}
+
+		content = append(content, buf[:read]...)
+	}
+
+	data := string(content)
+	return data, nil
 }
