@@ -442,7 +442,7 @@ func exportAccounts(accounts []*types.Account, dir string) (err error) {
 		phone := string(account.Phone)
 		data += id + ";" + phone + ";" + balance + "\n"
 	}
-	err = ioutil.WriteFile(dir, []byte(data), 0700)
+	err = ioutil.WriteFile(dir, []byte(data), 0777)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -460,7 +460,7 @@ func exportPayments(payments []*types.Payment, dir string) (err error) {
 		stat := string(payment.Status)
 		data += id + ";" + accID + ";" + amount + ";" + cat + ";" + stat + "\n"
 	}
-	err = ioutil.WriteFile(dir, []byte(data), 0700)
+	err = ioutil.WriteFile(dir, []byte(data), 0777)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -478,7 +478,7 @@ func exportFavorites(favorites []*types.Favorite, dir string) (err error) {
 		name := string(favorite.Name)
 		data += id + ";" + accID + ";" + name + ";" + amount + ";" + cat + "\n"
 	}
-	err = ioutil.WriteFile(dir, []byte(data), 0700)
+	err = ioutil.WriteFile(dir, []byte(data), 0777)
 	if err != nil {
 		log.Print(err)
 		return ErrWorkingDirectoryNotFound
@@ -658,7 +658,7 @@ func pathMaker(dir string, fileName string) (string, error) {
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.MkdirAll(path, 700)
+		os.MkdirAll(path, 0777)
 	}
 	return path + "/" + fileName, nil
 }
