@@ -217,7 +217,7 @@ func TestService_HistoryToFiles_sucess(t *testing.T) {
 		t.Errorf("%v error in testHistory",err)
 		return 
 	}
-	s.HistoryToFile(payments, "data", 3)
+	s.HistoryToFiles(payments, "data", 3)
 }
 
 // =========== Helper methods

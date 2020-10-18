@@ -320,25 +320,19 @@ func (s *Service) Export(dir string) (err error) {
 	payments := s.payments
 	favorites := s.favorites
 	if len(accounts) != 0 {
-		dir, err = pathMaker(dir, "payments.dump")
-		err = exportAccounts(accounts, dir)
-		if err != nil {
-			return err
-		}
+		path, err := pathMaker(dir, "accounts.dump")
+		err = exportAccounts(accounts, path)
+		log.Printf("%v error in accounts", err)
 	}
 	if len(payments) != 0 {
-		dir, err = pathMaker(dir, "payments.dump")
-		err = exportPayments(payments, dir)
-		if err != nil {
-			return err
-		}
+		path, err := pathMaker(dir, "payments.dump")
+		err = exportPayments(payments, path)
+		log.Printf("%v error in paymentts", err)
 	}
 	if len(favorites) != 0 {
-		dir, err = pathMaker(dir, "payments.dump")
-		err = exportFavorites(favorites, dir)
-		if err != nil {
-			return err
-		}
+		path, err := pathMaker(dir, "favorites.dump")
+		err = exportFavorites(favorites, path)
+		log.Printf("%v error in favorites", err)
 	}
 	return nil
 }
@@ -397,14 +391,14 @@ func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error)
 	return payments, nil
 }
 
-//HistoryToFile exports account history into files
-func (s *Service) HistoryToFile(payments []types.Payment, dir string, records int) error {
+//HistoryToFiles exports account history into files
+func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records int) error {
 
 	var pmnts []*types.Payment
 	for _, payment := range payments {
 		pmnts = append(pmnts, &payment)
 	}
-	if len(payments) <= records {
+	if len(payments) <= records && len(payments) > 0 {
 		path, err := pathMaker(dir, "payments.dump")
 		if err != nil {
 			return err
@@ -413,27 +407,27 @@ func (s *Service) HistoryToFile(payments []types.Payment, dir string, records in
 	}
 	if len(payments) > records {
 		paymentsToExport := []*types.Payment{}
-		paymentsCnt := 1 
-		for i, payment := range pmnts{
-			fileName := fmt.Sprintf("paymnets%v",paymentsCnt)
+		paymentsCnt := 1
+		for i, payment := range pmnts {
+			fileName := fmt.Sprintf("payments%v.dump", paymentsCnt)
 			path, err := pathMaker(dir, fileName)
-			paymentsToExport = append(paymentsToExport,payment)
-			if (i+1) % records == 0 && i != 0{
-				err = exportPayments(paymentsToExport,path)
-				if err != nil{
+			paymentsToExport = append(paymentsToExport, payment)
+			if (i+1)%records == 0 && i != 0 {
+				err = exportPayments(paymentsToExport, path)
+				if err != nil {
 					return err
 				}
-				paymentsCnt ++
+				paymentsCnt++
 				paymentsToExport = []*types.Payment{}
 			}
-			if i+1 == len(pmnts) && (i+1) % records != 0 {
-				err = exportPayments(paymentsToExport,path)
-				if err != nil{
+			if i+1 == len(pmnts) && (i+1)%records != 0 {
+				err = exportPayments(paymentsToExport, path)
+				if err != nil {
 					return err
 				}
 			}
-			
-		} 
+
+		}
 	}
 	return nil
 }
