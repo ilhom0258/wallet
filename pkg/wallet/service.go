@@ -6,11 +6,13 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/ilhom0258/wallet/pkg/types"
@@ -432,7 +434,57 @@ func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records i
 	return nil
 }
 
+//SumPayments calculates sum of payments amount with goroutines
+func (s *Service) SumPayments(goroutines int) types.Money {
+	if goroutines <= 1 || len(s.payments) == 1 {
+		return regularSum(s.payments)
+	}
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	total := types.Money(0)
+
+	index := 0
+	prop := int(math.Floor(float64(len(s.payments)) / float64(goroutines)))
+	data := make([][]*types.Payment, prop+1)
+	log.Print(s.payments)
+	for i := 0; i < len(s.payments); i+=goroutines {
+		end := i + goroutines
+		if end > len(s.payments){
+			end = len(s.payments)
+		}
+		data[index] = s.payments[i:end]
+		index++
+	}
+	for _, pntSlice := range data {
+		wg.Add(1)
+		log.Print(pntSlice)
+		go concurrentSum(&total, pntSlice, &wg, &mu)
+	}
+	wg.Wait()
+	return total
+}
+
 // Helpers
+
+func regularSum(payments []*types.Payment) types.Money {
+	sum := types.Money(0)
+	for _, payment := range payments {
+		sum += payment.Amount
+	}
+	return sum
+}
+
+func concurrentSum(total *types.Money, payments []*types.Payment, wg *sync.WaitGroup, mu *sync.Mutex) {
+	sum := types.Money(0)
+	mu.Lock()
+	for _, payment := range payments {
+		sum += payment.Amount
+	}
+	*total += sum
+	mu.Unlock()
+	wg.Done()
+}
 
 func exportAccounts(accounts []*types.Account, dir string) (err error) {
 	data := ""

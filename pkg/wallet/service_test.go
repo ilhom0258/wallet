@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"fmt"
 	"testing"
 
@@ -218,6 +219,13 @@ func TestService_HistoryToFiles_sucess(t *testing.T) {
 		return 
 	}
 	s.HistoryToFiles(payments, "data", 3)
+}
+
+func TestService_SumPayments_success(t *testing.T) {
+	s := newTestService()
+	s.addAccount(defaultTestAccount)
+	sum := s.SumPayments(4)
+	log.Println(sum)
 }
 
 // =========== Helper methods
