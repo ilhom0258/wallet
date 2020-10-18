@@ -447,7 +447,6 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	index := 0
 	prop := int(math.Floor(float64(len(s.payments)) / float64(goroutines)))
 	data := make([][]*types.Payment, prop+1)
-	log.Print(s.payments)
 	for i := 0; i < len(s.payments); i+=goroutines {
 		end := i + goroutines
 		if end > len(s.payments){
@@ -458,7 +457,6 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	}
 	for _, pntSlice := range data {
 		wg.Add(1)
-		log.Print(pntSlice)
 		go concurrentSum(&total, pntSlice, &wg, &mu)
 	}
 	wg.Wait()

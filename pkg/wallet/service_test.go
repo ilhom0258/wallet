@@ -228,6 +228,21 @@ func TestService_SumPayments_success(t *testing.T) {
 	log.Println(sum)
 }
 
+func BenchmarkService_SumPayments(b *testing.B) {
+	s := newTestService()
+	s.addAccount(defaultTestAccount)
+	want := types.Money(1100000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumPayments(5)
+		b.StopTimer()
+		if result != want{
+			b.Fatalf("want %v, result %v", want, result)
+		}
+		b.StartTimer()
+	}
+}
+
 // =========== Helper methods
 type testService struct {
 	*Service
