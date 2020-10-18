@@ -447,9 +447,9 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	index := 0
 	prop := int(math.Floor(float64(len(s.payments)) / float64(goroutines)))
 	data := make([][]*types.Payment, prop+1)
-	for i := 0; i < len(s.payments); i+=goroutines {
+	for i := 0; i < len(s.payments); i += goroutines {
 		end := i + goroutines
-		if end > len(s.payments){
+		if end > len(s.payments) {
 			end = len(s.payments)
 		}
 		data[index] = s.payments[i:end]
@@ -463,7 +463,59 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	return total
 }
 
+//FilterPayments filters payments by accoundID executing function on goroutines
+func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payment, error) {
+
+	var account *types.Account
+	for _, acc := range s.accounts {
+		if acc.ID == accountID {
+			account = acc
+		}
+	}
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	if goroutines <= 0 || len(s.payments) <= 1 {
+		var payments []types.Payment
+		for _, payment := range s.payments {
+			if payment.AccountID == accountID {
+				payments = append(payments, *payment)
+			}
+		}
+		return payments, nil
+	}
+
+	mu := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	payments := []types.Payment{}
+	prop := int(math.Ceil(float64(len(s.payments)) / float64(goroutines)))
+	index := 0
+	dataToFilter := make([][]*types.Payment, prop)
+	for i := 0; i < len(s.payments); i += goroutines {
+		end := int(math.Min(float64(i+goroutines), float64(len(s.payments))))
+		dataToFilter[index] = s.payments[i:end]
+		index++
+	}
+	for _, item := range dataToFilter {
+		wg.Add(1)
+		go filterConcurrently(&payments, &wg, &mu, item, accountID)
+	}
+	wg.Wait()
+	return payments, nil
+}
+
 // Helpers
+func filterConcurrently(payments *[]types.Payment, wg *sync.WaitGroup, mu *sync.Mutex, data []*types.Payment, accountID int64) {
+	mu.Lock()
+	for _, info := range data {
+		if info.AccountID == accountID {
+			*payments = append(*payments,*info)
+		}
+	}
+	mu.Unlock()
+	wg.Done()
+}
 
 func regularSum(payments []*types.Payment) types.Money {
 	sum := types.Money(0)

@@ -1,8 +1,8 @@
 package wallet
 
 import (
-	"log"
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/ilhom0258/wallet/pkg/types"
@@ -208,15 +208,15 @@ func TestService_Export_success(t *testing.T) {
 func TestService_HistoryToFiles_sucess(t *testing.T) {
 	s := newTestService()
 	account, _, err := s.addAccount(defaultTestAccount)
-	if err != nil{
+	if err != nil {
 		t.Error("error in account")
-		return 
+		return
 	}
 	accountID := int64(account.ID)
 	payments, err := s.ExportAccountHistory(accountID)
 	if err != nil {
-		t.Errorf("%v error in testHistory",err)
-		return 
+		t.Errorf("%v error in testHistory", err)
+		return
 	}
 	s.HistoryToFiles(payments, "data", 3)
 }
@@ -236,8 +236,23 @@ func BenchmarkService_SumPayments(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		result := s.SumPayments(5)
 		b.StopTimer()
-		if result != want{
+		if result != want {
 			b.Fatalf("want %v, result %v", want, result)
+		}
+		b.StartTimer()
+	}
+}
+
+func Benchmark(b *testing.B) {
+	s := newTestService()
+	_, payments, _ := s.addAccount(defaultTestAccount)
+	payment := payments[0]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		result, _:= s.FilterPayments(payment.AccountID, 5)
+		if len(result) > 0{
+			b.Logf("%v", result)
 		}
 		b.StartTimer()
 	}
