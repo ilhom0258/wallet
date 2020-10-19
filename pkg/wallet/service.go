@@ -444,17 +444,7 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	mu := sync.Mutex{}
 	total := types.Money(0)
 
-	index := 0
-	prop := int(math.Floor(float64(len(s.payments)) / float64(goroutines)))
-	data := make([][]*types.Payment, prop+1)
-	for i := 0; i < len(s.payments); i += goroutines {
-		end := i + goroutines
-		if end > len(s.payments) {
-			end = len(s.payments)
-		}
-		data[index] = s.payments[i:end]
-		index++
-	}
+	data := s.getPaymentsData(goroutines)
 	for _, pntSlice := range data {
 		wg.Add(1)
 		go concurrentSum(&total, pntSlice, &wg, &mu)
@@ -476,7 +466,7 @@ func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payme
 		return nil, ErrAccountNotFound
 	}
 
-	if goroutines <= 0 || len(s.payments) <= 1 {
+	if goroutines <= 1 || len(s.payments) <= 1 {
 		var payments []types.Payment
 		for _, payment := range s.payments {
 			if payment.AccountID == accountID {
@@ -489,14 +479,7 @@ func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payme
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	payments := []types.Payment{}
-	prop := int(math.Ceil(float64(len(s.payments)) / float64(goroutines)))
-	index := 0
-	dataToFilter := make([][]*types.Payment, prop)
-	for i := 0; i < len(s.payments); i += goroutines {
-		end := int(math.Min(float64(i+goroutines), float64(len(s.payments))))
-		dataToFilter[index] = s.payments[i:end]
-		index++
-	}
+	dataToFilter := s.getPaymentsData(goroutines)
 	for _, item := range dataToFilter {
 		wg.Add(1)
 		go filterConcurrently(&payments, &wg, &mu, item, accountID)
@@ -505,12 +488,61 @@ func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payme
 	return payments, nil
 }
 
+//FilterPaymentsByFn function that returns payments that satisfies to the given function inside
+func (s *Service) FilterPaymentsByFn(filter func(payment types.Payment) bool, goroutines int) ([]types.Payment, error) {
+
+	payments := []types.Payment{}
+	if goroutines <= 1 || len(s.payments) <= 1 {
+		for _, payment := range s.payments {
+			if filter(*payment) == true {
+				payments = append(payments, *payment)
+			}
+		}
+		return payments, nil
+	}
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	dataToFilter := s.getPaymentsData(goroutines)
+	for _, item := range dataToFilter {
+		wg.Add(1)
+		go filterFnConcurrently(filter, &wg, &mu, &payments, item)
+	}
+	wg.Wait()
+	return payments, nil
+}
+
 // Helpers
+
+func filterFnConcurrently(filter func(types.Payment) bool,
+	wg *sync.WaitGroup, mu *sync.Mutex, payments *[]types.Payment, data []*types.Payment) {
+
+	mu.Lock()
+	for _, item := range data {
+		if filter(*item) == true {
+			*payments = append(*payments, *item)
+		}
+	}
+	mu.Unlock()
+	wg.Done()
+}
+
+func (s *Service) getPaymentsData(goroutines int) [][]*types.Payment {
+	prop := int(math.Ceil(float64(len(s.payments)) / float64(goroutines)))
+	index := 0
+	dataToFilter := make([][]*types.Payment, prop)
+	for i := 0; i < len(s.payments); i += goroutines {
+		end := int(math.Min(float64(i+goroutines), float64(len(s.payments))))
+		dataToFilter[index] = s.payments[i:end]
+		index++
+	}
+	return dataToFilter
+}
+
 func filterConcurrently(payments *[]types.Payment, wg *sync.WaitGroup, mu *sync.Mutex, data []*types.Payment, accountID int64) {
 	mu.Lock()
 	for _, info := range data {
 		if info.AccountID == accountID {
-			*payments = append(*payments,*info)
+			*payments = append(*payments, *info)
 		}
 	}
 	mu.Unlock()

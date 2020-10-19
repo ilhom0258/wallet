@@ -243,15 +243,34 @@ func BenchmarkService_SumPayments(b *testing.B) {
 	}
 }
 
-func Benchmark(b *testing.B) {
+func BenchmarkService_FilterPayments_success(b *testing.B) {
 	s := newTestService()
-	_, payments, _ := s.addAccount(defaultTestAccount)
-	payment := payments[0]
+	s.addAccount(defaultTestAccount)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		result, _ := s.FilterPayments(1, 5)
 		b.StopTimer()
-		result, _:= s.FilterPayments(payment.AccountID, 5)
-		if len(result) > 0{
+		if len(result) > 0 {
+			b.Logf("%v", result)
+		}
+		b.StartTimer()
+	}
+}
+
+func BenchmarkService_FilterPaymentsByFn_success(b *testing.B) {
+	s := newTestService()
+	s.addAccount(defaultTestAccount)
+	b.ResetTimer()
+	filter := func(payment types.Payment)bool{
+		if payment.AccountID == 1{
+			return true
+		}
+		return false
+	}
+	for i := 0; i < b.N; i++ {
+		result, _ := s.FilterPaymentsByFn(filter, 5)
+		b.StopTimer()
+		if len(result) > 0 {
 			b.Logf("%v", result)
 		}
 		b.StartTimer()
