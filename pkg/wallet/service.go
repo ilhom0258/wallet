@@ -26,6 +26,12 @@ type Service struct {
 	favorites     []*types.Favorite
 }
 
+//Progress structure for sum calculating
+type Progress struct{
+	Part int
+	Result types.Money
+}
+
 //Error message
 type Error string
 
@@ -509,6 +515,32 @@ func (s *Service) FilterPaymentsByFn(filter func(payment types.Payment) bool, go
 	}
 	wg.Wait()
 	return payments, nil
+}
+
+//SumPaymentsWithProgress calculates sum of payments by dividing in to parts
+func (s *Service) SumPaymentsWithProgress() <-chan Progress{
+	pros := 100_000 
+	payments := s.payments
+	size := len(payments) / pros
+	ch := make(chan Progress)
+	defer close(ch)
+	for i := 0; i < pros; i++{
+		go func(ch chan<- Progress, data []*types.Payment,part int){
+			sum := Progress{}
+			for _, v := range data{
+				sum.Part = part
+				sum.Result += types.Money(v.Amount)
+			}
+			ch <-sum 
+		}(ch, payments[i*size:(i+1)*size],i)
+	} 
+	total := []Progress{}
+	for i := 0; i < pros; i++{
+		p := <- ch
+		total = append(total,p)
+	}
+	log.Print(total)
+	return ch
 }
 
 // Helpers
